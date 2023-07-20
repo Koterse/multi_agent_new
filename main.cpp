@@ -11,19 +11,18 @@
 
 double a[N];
 double c[N];
-double Q[N][A][A];
+double Q[N][A][A][A];
 double X[N][A];
-double preX[N][A];
+double preX[N][A][A];
 double action_space[M];
 double action[N];
-long long visit[A][A];
+long long visit[A][A][A];
 
 // multi-agent Q-learning New
 int main() {
     std::mt19937 gen(19260817);
     std::binomial_distribution<int> bin(2 * S, 0.5);
-    std::extreme_value_distribution<double> gumbel(
-        -ETA * std::numbers::egamma_v<double>, ETA);
+    std::extreme_value_distribution<double> gumbel(-ETA * std::numbers::egamma_v<double>, ETA);
 
     // initialization stage
     initialize_Q(Q, 0);
@@ -39,8 +38,8 @@ int main() {
     memcpy(preX, X, sizeof(X));
 
     long long t = 1;
-    while (t < 1000000000LL) {
-        double a_0 = 0.15;
+    while (t < 100000000LL) {
+        double a_0 = 0;
 
         // policy updating
         int choice[N];
@@ -65,8 +64,8 @@ int main() {
         for (int i = 0; i < N; ++i) {
             update_strategy(X[i], choice[i], max_index[i], calculate_nm(t));
         }
-
-        visit[choice[0]][choice[1]]++;
+        // printf("%d %d %d\n", choice[0], choice[1], choice[2]);
+        visit[choice[0]][choice[1]][choice[2]]++;
 
         double reward[N];
 
@@ -83,14 +82,14 @@ int main() {
         // }
 
         // updating Q value
-        double tmp[2];
-        double rate = calculate_learning_rate(visit[choice[0]][choice[1]]);
+        double tmp[N];
+        double rate = calculate_learning_rate(visit[choice[0]][choice[1]][choice[2]]);
         for (int i = 0; i < N; i++) {
-            tmp[i] = (1 - rate) * Q[i][choice[i]][choice[1 - i]] +
-                     rate * (reward[i] + GAMMA * calculate_Popu(i, X, Q));
+            tmp[i] = (1 - rate) * Q[i][choice[i]][choice[(i + 1) % N]][choice[(i + 2) % N]]
+                     + rate * (reward[i] + GAMMA * calculate_Popu(i, X, Q));
         }
         for (int i = 0; i < N; ++i) {
-            Q[i][choice[i]][choice[1 - i]] = tmp[i];
+            Q[i][choice[i]][choice[(i + 1) % N]][choice[(i + 2) % N]] = tmp[i];
         }
 
         if (t % 100000 == 0) {
@@ -103,17 +102,19 @@ int main() {
             //         }
             //     }
             // }
-            if (converge(preX, X)) {
-                break;
-            }
-            memcpy(preX, X, sizeof(X));
+            // if (converge(preX, X)) {
+            //     break;
+            // }
+            // memcpy(preX, X, sizeof(X));
         }
         if (t % 10000000 == 0) {
             printf("t = %lld\n", t);
             for (int i = 0; i < N; ++i) {
                 for (int a = 0; a < A; ++a) {
                     for (int b = 0; b < A; ++b) {
-                        printf("%d %d %d %lf\n", i, a, b, Q[i][a][b]);
+                        for (int c = 0; c < A; ++c) {
+                            printf("%d %d %d %d %lf\n", i, a, b, c, Q[i][a][b][c]);
+                        }
                     }
                 }
             }
@@ -129,7 +130,9 @@ int main() {
     for (int i = 0; i < N; ++i) {
         for (int a = 0; a < A; ++a) {
             for (int b = 0; b < A; ++b) {
-                printf("%d %d %d %lf\n", i, a, b, Q[i][a][b]);
+                for (int c = 0; c < A; ++c) {
+                    printf("%d %d %d %d %lf\n", i, a, b, c, Q[i][a][b][c]);
+                }
             }
         }
     }
